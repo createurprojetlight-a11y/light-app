@@ -1,0 +1,49 @@
+name: Build Android APK from ZIP
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Décompresser le projet ZIP
+        run: |
+          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Extraction de $ZIP_FILE..."
+            unzip -o "$ZIP_FILE" -d .
+          else
+            echo "Aucun fichier ZIP trouvé à la racine."
+            exit 1
+          fi
+
+      - name: Configurer Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Configurer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Obtenir les dépendances
+        run: flutter pub get
+
+      - name: Compiler l'APK Android
+        run: flutter build apk --release
+
+      - name: Téléverser l'APK généré (Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
